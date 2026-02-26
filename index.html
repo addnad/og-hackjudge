@@ -115,6 +115,18 @@ a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
 .fst-n{font:900 24px var(--ft);color:var(--gold);margin-bottom:8px}
 .fst h4{font:600 13px var(--fb);margin-bottom:4px}
 .fst p{font:400 12px/1.5 var(--fb);color:var(--t3)}
+.lrd{display:none;padding:16px 18px 20px;border-top:1px solid var(--line);background:var(--ink)}
+.lrd.open{display:block}
+.lr{cursor:pointer;display:block;border-radius:var(--r);margin-bottom:6px}
+.lr-top{display:grid;grid-template-columns:44px 1fr auto auto;gap:14px;align-items:center;padding:14px 18px}
+.lrd-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+@media(max-width:600px){.lrd-grid{grid-template-columns:1fr}}
+.lrd-item h4{font:600 10px var(--fm);letter-spacing:.8px;text-transform:uppercase;color:var(--t3);margin-bottom:4px}
+.lrd-item p{font:400 13px/1.5 var(--fb);color:var(--t2)}
+.lrd-item a{font:400 13px var(--fb);color:var(--gold)}
+.lrd-bars{margin-bottom:14px}
+.lrd-chevron{font-size:11px;color:var(--t3);transition:.25s;display:inline-block}
+.lr.open .lrd-chevron{transform:rotate(180deg)}
 .foot{text-align:center;padding:44px 0;border-top:1px solid var(--line);margin-top:52px}
 .foot p{font:400 12px var(--fb);color:var(--t3)}
 .hidden{display:none!important}.mt3{margin-top:12px}.mt4{margin-top:16px}
@@ -332,9 +344,42 @@ function rlb(lb){
   var el=document.getElementById('lw');
   if(!lb||!lb.length){el.innerHTML='<div class="emp"><div class="emp-i">&#x1F3C5;</div><h3>No evaluations yet</h3><p>Submit and evaluate a project to appear here.</p></div>';return}
   var h='';lb.forEach(function(e,i){
-    h+='<div class="lr" style="animation-delay:'+(i*.07)+'s"><div class="lrk">#'+e.rank+'</div><div><div class="lnm">'+esc(e.project_name)+'</div><span class="tier '+tc(e.tier)+'" style="margin-top:3px;font-size:10px">'+e.tier+'</span></div><div class="lsc">'+Math.round(e.score)+'</div>';
-    h+=e.explorer_url?'<a class="vb" href="'+e.explorer_url+'" target="_blank">Verify &#8599;</a>':'<div></div>';h+='</div>';
-  });el.innerHTML=h;
+    var sid='lb-'+i;
+    h+='<div class="lr" id="lrc-'+i+'" style="animation-delay:'+(i*.07)+'s" onclick="tglb('+i+')">';
+    h+='<div class="lr-top">';
+    h+='<div class="lrk">#'+e.rank+'</div>';
+    h+='<div><div class="lnm">'+esc(e.project_name)+'</div><span class="tier '+tc(e.tier)+'" style="margin-top:3px;font-size:10px">'+e.tier+'</span></div>';
+    h+='<div class="lsc">'+Math.round(e.score)+'</div>';
+    h+='<div class="lrd-chevron">&#9660;</div>';
+    h+='</div>';
+    // Dropdown details
+    h+='<div class="lrd" id="'+sid+'">';
+    h+='<div class="lrd-grid">';
+    if(e.description) h+='<div class="lrd-item"><h4>Description</h4><p>'+esc(e.description)+'</p></div>';
+    if(e.tech_stack) h+='<div class="lrd-item"><h4>Tech Stack</h4><p>'+esc(e.tech_stack)+'</p></div>';
+    if(e.og_features) h+='<div class="lrd-item"><h4>OG Features</h4><p>'+esc(e.og_features)+'</p></div>';
+    if(e.wallet) h+='<div class="lrd-item"><h4>Submitted By</h4><p style="font-family:var(--fm);font-size:11px">'+e.wallet.substring(0,6)+'...'+e.wallet.substring(38)+'</p></div>';
+    if(e.demo_url) h+='<div class="lrd-item"><h4>Demo</h4><a href="'+e.demo_url+'" target="_blank">View Demo &#8599;</a></div>';
+    if(e.repo_url) h+='<div class="lrd-item"><h4>Repo</h4><a href="'+e.repo_url+'" target="_blank">View Repo &#8599;</a></div>';
+    h+='</div>';
+    // Score bars
+    h+='<div class="lrd-bars">';
+    var cats=[['Innovation',e.scores.innovation,25],['Technical',e.scores.technical,25],['UX',e.scores.ux,20],['Completeness',e.scores.completeness,15],['Impact',e.scores.impact,15]];
+    cats.forEach(function(c){
+      h+='<div class="br"><div class="bt"><span class="bn">'+c[0]+'</span><span class="bv">'+c[1]+'/'+c[2]+'</span></div><div class="btr"><div class="bf" style="width:'+(c[1]/c[2]*100)+'%;background:var(--gold)"></div></div></div>';
+    });
+    h+='</div>';
+    if(e.explorer_url) h+='<a class="vb" href="'+e.explorer_url+'" target="_blank">Verify on-chain &#8599;</a>';
+    h+='</div></div>';
+  });
+  el.innerHTML=h;
+}
+
+function tglb(i){
+  var card=document.getElementById('lrc-'+i);
+  var drop=document.getElementById('lb-'+i);
+  card.classList.toggle('open');
+  drop.classList.toggle('open');
 }
 
 function sc(s){return s>=85?'var(--tier-s)':s>=70?'var(--tier-a)':s>=55?'var(--tier-b)':s>=40?'var(--tier-c)':'var(--tier-d)'}

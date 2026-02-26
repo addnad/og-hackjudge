@@ -47,15 +47,11 @@ def score_project(p):
 
 @app.route('/')
 def landing():
-    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(os.path.join(base, 'landing.html'), 'r') as f:
-        return f.read(), 200, {'Content-Type': 'text/html'}
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'landing.html')
 
 @app.route('/app')
 def index():
-    base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(os.path.join(base, 'index.html'), 'r') as f:
-        return f.read(), 200, {'Content-Type': 'text/html'}
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 
 @app.route('/api/projects', methods=['GET'])
 def get_projects():
@@ -186,8 +182,18 @@ def leaderboard():
         lb.append({
             "rank": i + 1,
             "project_name": p["name"],
+            "description": p.get("description", ""),
+            "tech_stack": p.get("tech_stack", ""),
+            "og_features": p.get("og_features", ""),
+            "demo_url": p.get("demo_url", ""),
+            "repo_url": p.get("repo_url", ""),
+            "wallet": p.get("wallet", ""),
             "score": p["evaluation"]["weighted_total"],
             "tier": p["evaluation"]["tier"],
+            "scores": p["evaluation"]["scores"],
+            "summary": p["evaluation"]["summary"],
+            "strengths": p["evaluation"]["strengths"],
+            "improvements": p["evaluation"]["improvements"],
             "explorer_url": ""
         })
     return jsonify({"leaderboard": lb})

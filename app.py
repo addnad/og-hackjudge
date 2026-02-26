@@ -182,8 +182,18 @@ def leaderboard():
         lb.append({
             "rank": i + 1,
             "project_name": p["name"],
+            "description": p.get("description", ""),
+            "tech_stack": p.get("tech_stack", ""),
+            "og_features": p.get("og_features", ""),
+            "demo_url": p.get("demo_url", ""),
+            "repo_url": p.get("repo_url", ""),
+            "wallet": p.get("wallet", ""),
             "score": p["evaluation"]["weighted_total"],
             "tier": p["evaluation"]["tier"],
+            "scores": p["evaluation"]["scores"],
+            "summary": p["evaluation"]["summary"],
+            "strengths": p["evaluation"]["strengths"],
+            "improvements": p["evaluation"]["improvements"],
             "explorer_url": ""
         })
     return jsonify({"leaderboard": lb})
