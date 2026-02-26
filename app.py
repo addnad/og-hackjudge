@@ -86,6 +86,13 @@ def evaluate(pid):
     try:
         start = time.time()
 
+        # Check wallet ownership
+        data_check = request.json
+        submitter_wallet = p.get('wallet', '').lower()
+        evaluator_wallet = data_check.get('wallet', '').lower()
+        if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
+            return jsonify({'error': 'Only the project owner can evaluate this project.'}), 403
+
         features = score_project(p)
         f1, f2, f3, f4 = features
 

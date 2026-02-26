@@ -47,11 +47,11 @@ def score_project(p):
 
 @app.route('/')
 def landing():
-    return send_from_directory(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'landing.html')
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'landing.html')
 
 @app.route('/app')
 def index():
-    return send_from_directory(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'index.html')
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
 
 @app.route('/api/projects', methods=['GET'])
 def get_projects():
@@ -85,6 +85,13 @@ def evaluate(pid):
 
     try:
         start = time.time()
+
+        # Check wallet ownership
+        data_check = request.json
+        submitter_wallet = p.get('wallet', '').lower()
+        evaluator_wallet = data_check.get('wallet', '').lower()
+        if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
+            return jsonify({'error': 'Only the project owner can evaluate this project.'}), 403
 
         features = score_project(p)
         f1, f2, f3, f4 = features
@@ -182,4 +189,4 @@ def leaderboard():
     return jsonify({"leaderboard": lb})
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=8000)
