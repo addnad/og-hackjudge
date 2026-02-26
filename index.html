@@ -1,0 +1,344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>OG HackJudge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@400;700;900&family=Instrument+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{--gold:#E8B931;--gold-dim:rgba(232,185,49,.12);--gold-glow:rgba(232,185,49,.35);--ink:#06060B;--panel:#0D0D15;--card:#111119;--card-up:#16161F;--line:#1E1E2C;--t1:#EAEAF2;--t2:#9696B0;--t3:#5A5A74;--ok:#3BE8A0;--err:#F05050;--info:#5898F0;--tier-s:var(--gold);--tier-a:#3BE8A0;--tier-b:#5898F0;--tier-c:#E8983B;--tier-d:#F05050;--r:10px;--rr:18px;--ft:'Anybody',system-ui;--fb:'Instrument Sans',system-ui;--fm:'IBM Plex Mono',monospace}
+html{scroll-behavior:smooth}
+body{font-family:var(--fb);background:var(--ink);color:var(--t1);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:var(--ink)}::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}
+a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
+.shell{max-width:1080px;margin:0 auto;padding:0 20px}
+.hero{padding:40px 0 36px;text-align:center}
+.htag{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;border:1px solid var(--gold);border-radius:99px;font:500 10px/1 var(--fm);letter-spacing:2.5px;text-transform:uppercase;color:var(--gold);background:var(--gold-dim);margin-bottom:22px}
+.hero h1{font:900 clamp(34px,7vw,60px)/1.05 var(--ft);letter-spacing:-2px;margin-bottom:12px}
+.hero h1 em{font-style:normal;color:var(--gold)}
+.hsub{font:400 15px/1.65 var(--fb);color:var(--t2);max-width:500px;margin:0 auto}
+.hline{width:160px;height:1px;background:linear-gradient(90deg,transparent,var(--gold),transparent);margin:32px auto 0}
+.tabs{display:flex;gap:3px;padding:3px;background:var(--panel);border:1px solid var(--line);border-radius:14px;max-width:520px;margin:0 auto 44px;position:sticky;top:12px;z-index:100}
+.tab{flex:1;padding:11px 10px;border:none;background:none;color:var(--t3);font:600 13px var(--fb);cursor:pointer;border-radius:11px;transition:.2s}
+.tab:hover{color:var(--t2);background:var(--card)}
+.tab.on{background:var(--gold);color:var(--ink)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--rr);padding:28px 30px;margin-bottom:22px}
+.ch{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:22px}
+.ct{font:700 17px var(--ft);display:flex;align-items:center;gap:9px}
+.ct .ico{width:26px;height:26px;display:grid;place-items:center;background:var(--gold-dim);border-radius:6px;font-size:13px}
+.fg{margin-bottom:18px}
+.fl{display:block;font:600 11px/1 var(--fm);letter-spacing:.8px;text-transform:uppercase;color:var(--t2);margin-bottom:7px}
+.fi,.ft{width:100%;padding:11px 14px;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);color:var(--t1);font:400 14px var(--fb);outline:none;transition:.2s}
+.fi:focus,.ft:focus{border-color:var(--gold);box-shadow:0 0 0 3px var(--gold-dim)}
+.fi::placeholder,.ft::placeholder{color:var(--t3)}
+.ft{min-height:88px;resize:vertical;line-height:1.55}
+.fr{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:600px){.fr{grid-template-columns:1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:11px 22px;border:none;border-radius:var(--r);font:600 13px var(--fb);cursor:pointer;transition:.2s;white-space:nowrap}
+.bg{background:var(--gold);color:var(--ink)}.bg:hover{box-shadow:0 0 30px var(--gold-dim);transform:translateY(-1px)}.bg:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.bo{background:var(--card);color:var(--t1);border:1px solid var(--line)}.bo:hover{border-color:var(--gold);color:var(--gold)}
+.bx{background:none;color:var(--t2);padding:8px 10px}.bx:hover{color:var(--gold)}
+.bs{padding:7px 14px;font-size:12px}
+.spin{display:inline-block;width:18px;height:18px;border:2px solid transparent;border-top-color:currentColor;border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.ld{display:flex;flex-direction:column;align-items:center;gap:14px;padding:56px 16px;text-align:center}
+.ld .spin{width:36px;height:36px;border-width:3px;color:var(--gold)}
+.rw{position:relative;width:130px;height:130px;flex-shrink:0}
+.rw svg{transform:rotate(-90deg);width:130px;height:130px}
+.rbg{fill:none;stroke:var(--line);stroke-width:7}
+.rfg{fill:none;stroke-width:7;stroke-linecap:round;transition:stroke-dashoffset 1.6s cubic-bezier(.22,1,.36,1)}
+.rv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font:900 30px var(--ft)}
+.rl{font:400 10px var(--fm);color:var(--t3);margin-top:2px;letter-spacing:1px;text-transform:uppercase}
+.br{margin-bottom:14px}
+.bt{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px}
+.bn{font:500 13px var(--fb)}
+.bv{font:500 13px var(--fm);color:var(--gold)}
+.btr{width:100%;height:5px;background:var(--ink);border-radius:3px;overflow:hidden}
+.bf{height:100%;border-radius:3px;transition:width 1.2s cubic-bezier(.22,1,.36,1)}
+.tier{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:99px;font:700 11px var(--fm);letter-spacing:1px;text-transform:uppercase}
+.ts{background:rgba(232,185,49,.12);color:var(--tier-s);border:1px solid rgba(232,185,49,.25)}
+.ta{background:rgba(59,232,160,.12);color:var(--tier-a);border:1px solid rgba(59,232,160,.25)}
+.tb{background:rgba(88,152,240,.12);color:var(--tier-b);border:1px solid rgba(88,152,240,.25)}
+.tc{background:rgba(232,152,59,.12);color:var(--tier-c);border:1px solid rgba(232,152,59,.25)}
+.td{background:rgba(240,80,80,.12);color:var(--tier-d);border:1px solid rgba(240,80,80,.25)}
+.lr{display:grid;grid-template-columns:44px 1fr auto auto;gap:14px;align-items:center;padding:14px 18px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:6px;transition:.2s}
+.lr:hover{border-color:var(--gold);background:var(--card-up)}
+.lrk{font:900 18px var(--ft);text-align:center;color:var(--t3)}
+.lr:nth-child(1) .lrk{color:var(--gold)}.lr:nth-child(2) .lrk{color:var(--t2)}.lr:nth-child(3) .lrk{color:#CD7F32}
+.lnm{font:600 14px var(--fb)}
+.lsc{font:700 17px var(--fm);color:var(--gold)}
+.vb{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:rgba(59,232,160,.08);border:1px solid rgba(59,232,160,.2);border-radius:6px;font:500 11px var(--fm);color:var(--ok);transition:.2s;text-decoration:none!important}
+.vb:hover{background:rgba(59,232,160,.16);border-color:var(--ok)}
+.fbg{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
+@media(max-width:700px){.fbg{grid-template-columns:1fr}}
+.fbi{padding:16px;background:var(--ink);border-radius:var(--r);border:1px solid var(--line)}
+.fbi h4{font:600 11px var(--fm);letter-spacing:.8px;text-transform:uppercase;color:var(--gold);margin-bottom:7px}
+.fbi p,.fbi li{font:400 13px/1.6 var(--fb);color:var(--t2)}
+.fbi ul{list-style:none;padding:0}
+.fbi li{padding:6px 0 6px 18px;position:relative}
+.fbi li.s::before{content:'';position:absolute;left:0;top:11px;width:6px;height:6px;background:var(--ok);border-radius:50%}
+.fbi li.i::before{content:'';position:absolute;left:0;top:11px;width:6px;height:6px;background:var(--gold);border-radius:50%}
+.pc{display:grid;grid-template-columns:1fr auto;gap:14px;align-items:center;padding:18px;background:var(--card);border:1px solid var(--line);border-radius:var(--r);margin-bottom:8px;cursor:pointer;transition:.2s}
+.pc:hover{border-color:var(--gold);background:var(--card-up)}
+.pcn{font:600 14px var(--fb);margin-bottom:3px}
+.pcd{font:400 12px var(--fb);color:var(--t3);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.bdg{font:600 10px var(--fm);padding:3px 9px;border-radius:99px;letter-spacing:1px;text-transform:uppercase}
+.bds{background:rgba(88,152,240,.1);color:var(--info);border:1px solid rgba(88,152,240,.2)}
+.bde{background:rgba(59,232,160,.1);color:var(--ok);border:1px solid rgba(59,232,160,.2)}
+.dv{display:flex;align-items:center;gap:14px;margin:26px 0 20px}
+.dv::before,.dv::after{content:'';flex:1;height:1px;background:var(--line)}
+.dv span{font:500 10px var(--fm);letter-spacing:2px;text-transform:uppercase;color:var(--t3)}
+.al{padding:11px 14px;border-radius:var(--r);font:400 13px/1.5 var(--fb);margin-bottom:16px;display:flex;align-items:flex-start;gap:9px}
+.aok{background:rgba(59,232,160,.08);border:1px solid rgba(59,232,160,.2);color:var(--ok)}
+.aer{background:rgba(240,80,80,.08);border:1px solid rgba(240,80,80,.2);color:var(--err)}
+.ain{background:rgba(88,152,240,.08);border:1px solid rgba(88,152,240,.2);color:var(--info)}
+.cr{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cl{font:500 11px var(--fm);color:var(--t3);min-width:100px}
+.cv{font:400 12px var(--fm);padding:3px 9px;background:var(--ink);border:1px solid var(--line);border-radius:5px;color:var(--t2)}
+.erh{display:flex;gap:28px;margin-bottom:28px;flex-wrap:wrap;align-items:flex-start}
+.erm{flex:1}.erm h3{font:700 20px var(--ft);margin-bottom:7px}.erm>p{color:var(--t2);font-size:14px;line-height:1.6;margin-bottom:10px}
+.emp{text-align:center;padding:52px 16px;color:var(--t3)}
+.emp-i{font-size:42px;margin-bottom:14px;opacity:.5}
+.emp h3{font:700 16px var(--ft);color:var(--t2);margin-bottom:6px}
+.emp p{font-size:13px;max-width:360px;margin:0 auto;line-height:1.6}
+.fh{text-align:center;padding:40px 20px}
+.fh .fi-ico{font-size:56px;margin-bottom:20px;display:block}
+.fh h2{font:900 28px var(--ft);margin-bottom:12px}
+.fh>p{font:400 14px/1.7 var(--fb);color:var(--t2);max-width:460px;margin:0 auto 28px}
+.fbtn{display:inline-flex;align-items:center;gap:10px;padding:16px 36px;background:var(--gold);color:var(--ink);border:none;border-radius:var(--r);font:700 15px var(--fb);cursor:pointer;transition:.25s;text-decoration:none!important}
+.fbtn:hover{box-shadow:0 0 40px var(--gold-glow);transform:translateY(-2px)}
+.fsteps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:36px}
+@media(max-width:640px){.fsteps{grid-template-columns:1fr}}
+.fst{padding:20px;background:var(--ink);border:1px solid var(--line);border-radius:var(--r);text-align:left}
+.fst-n{font:900 24px var(--ft);color:var(--gold);margin-bottom:8px}
+.fst h4{font:600 13px var(--fb);margin-bottom:4px}
+.fst p{font:400 12px/1.5 var(--fb);color:var(--t3)}
+.foot{text-align:center;padding:44px 0;border-top:1px solid var(--line);margin-top:52px}
+.foot p{font:400 12px var(--fb);color:var(--t3)}
+.hidden{display:none!important}.mt3{margin-top:12px}.mt4{margin-top:16px}
+.topbar{display:flex;justify-content:flex-end;padding:16px 0 0;gap:10px;align-items:center}
+.wbtn{display:inline-flex;align-items:center;gap:7px;padding:8px 16px;border:1px solid var(--gold);border-radius:99px;background:var(--gold-dim);color:var(--gold);font:600 12px var(--fm);cursor:pointer;transition:.25s;letter-spacing:.5px}
+.wbtn:hover{background:var(--gold);color:var(--ink)}
+.wbtn.on{border-color:var(--ok);color:var(--ok);background:rgba(59,232,160,.08);cursor:default}
+.wdot{width:7px;height:7px;border-radius:50%;background:var(--ok);display:inline-block;animation:pd 2s ease-in-out infinite}
+@keyframes pd{0%,100%{opacity:1}50%{opacity:.4}}
+</style>
+</head>
+<body>
+<div class="shell">
+<div class="topbar">
+  <button class="wbtn" id="wb" onclick="cw()">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M16 14h.01"/><path d="M2 10h20"/></svg>
+    Connect Wallet
+  </button>
+</div>
+<header class="hero">
+  <div class="htag">&#9670; Powered by OpenGradient Verifiable Inference</div>
+  <h1>OG <em>HackJudge</em></h1>
+  <p class="hsub">Submit your project. Get scored by a verifiable AI model. Every evaluation is cryptographically proven on the OpenGradient testnet.</p>
+  <div class="hline"></div>
+</header>
+<nav class="tabs">
+  <button class="tab on" onclick="go('submit')">Submit</button>
+  <button class="tab" onclick="go('projects')">Projects</button>
+  <button class="tab" onclick="go('board')">Leaderboard</button>
+  <button class="tab" onclick="go('faucet')">Faucet</button>
+</nav>
+
+<section id="v-submit"><div class="card">
+  <div class="ch"><div class="ct"><span class="ico">&#x1F4E6;</span>Submit Your Project</div></div>
+  <form id="sf" onsubmit="sub(event)">
+    <div class="fg"><label class="fl">Project Name *</label><input class="fi" id="s-name" placeholder="e.g. DeFi Sentinel" required></div>
+    <div class="fg"><label class="fl">Description *</label><textarea class="ft" id="s-desc" placeholder="What does it do? How does it use OpenGradient?" required></textarea></div>
+    <div class="fr"><div class="fg"><label class="fl">Tech Stack</label><input class="fi" id="s-tech" placeholder="Python, React, Solidity..."></div><div class="fg"><label class="fl">OpenGradient Features</label><input class="fi" id="s-og" placeholder="LLM, TEE, MemSync..."></div></div>
+    <div class="fr"><div class="fg"><label class="fl">Demo URL</label><input class="fi" id="s-demo" placeholder="https://your-demo.app" type="url"></div><div class="fg"><label class="fl">Repo URL</label><input class="fi" id="s-repo" placeholder="https://github.com/..." type="url"></div></div>
+    <div class="fg"><label class="fl">Additional Notes</label><textarea class="ft" id="s-notes" placeholder="Challenges, future plans..." style="min-height:64px"></textarea></div>
+    <button class="btn bg" type="submit" id="sb">Submit Project</button>
+  </form>
+  <div id="sm" class="hidden mt4"></div>
+</div></section>
+
+<section id="v-projects" class="hidden"><div id="pl"></div><div id="pd" class="hidden"></div></section>
+
+<section id="v-board" class="hidden"><div class="card">
+  <div class="ch"><div class="ct"><span class="ico">&#x1F3C6;</span>Leaderboard</div><button class="btn bo bs" onclick="llb()">Refresh</button></div>
+  <div id="lw"></div>
+</div></section>
+
+<section id="v-faucet" class="hidden"><div class="card"><div class="fh">
+  <span class="fi-ico">&#x1F6B0;</span>
+  <h2>Get Testnet Tokens</h2>
+  <p>You need OG testnet tokens to confirm transactions on the OpenGradient network.</p>
+  <a class="fbtn" href="https://faucet.opengradient.ai/" target="_blank" rel="noopener">&#8599; Claim Faucet Tokens</a>
+  <div class="fsteps">
+    <div class="fst"><div class="fst-n">01</div><h4>Connect Wallet</h4><p>Use MetaMask or any EVM wallet.</p></div>
+    <div class="fst"><div class="fst-n">02</div><h4>Claim Tokens</h4><p>Paste your address and receive free OG testnet tokens.</p></div>
+    <div class="fst"><div class="fst-n">03</div><h4>Submit & Evaluate</h4><p>Use tokens to submit and run verifiable AI evaluations.</p></div>
+  </div>
+</div></div></section>
+
+<footer class="foot"><p>Built by <a href="https://x.com/1st_Bernice" target="_blank">1stBernice</a> on <a href="https://opengradient.ai" target="_blank">OpenGradient</a> &mdash; <a href="https://docs.opengradient.ai" target="_blank">Docs</a> &middot; <a href="https://explorer.opengradient.ai" target="_blank">Explorer</a> &middot; <a href="https://discord.gg/SC45QNNMsB" target="_blank">Discord</a></p></footer>
+</div>
+<script>
+var W=null,SIGNER=null;
+var OGC={chainId:'0x29F4',chainName:'OpenGradient Testnet',nativeCurrency:{name:'OG',symbol:'OG',decimals:18},rpcUrls:['https://ogevmdevnet.opengradient.ai'],blockExplorerUrls:['https://explorer.opengradient.ai']};
+
+async function cw(){
+  if(!window.ethereum){alert('Please install MetaMask or Rabby wallet.');return}
+  try{
+    await window.ethereum.request({method:'eth_requestAccounts'});
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x29F4'}]});
+    }catch(e){
+      if(e.code===4902||e.code===-32603){
+        try{
+          await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
+        }catch(ae){console.error('Could not add chain:',ae)}
+      }
+    }
+    var accounts=await window.ethereum.request({method:'eth_accounts'});
+    W=accounts[0];uwui();
+  }catch(e){console.error(e);alert('Could not connect wallet: '+e.message)}
+}
+function uwui(){
+  if(!W)return;
+  var b=document.getElementById('wb');
+  var sh=W.substring(0,6)+'...'+W.substring(38);
+  b.innerHTML='<span class="wdot"></span> '+sh;
+  b.classList.add('on');
+  b.onclick=null;
+}
+if(window.ethereum){
+  window.ethereum.on('accountsChanged',function(a){
+    if(!a.length){W=null;location.reload()}
+    else{W=a[0];uwui()}
+  });
+}
+var BASE='http://127.0.0.1:5000',P=[];
+function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function go(t){
+  ['submit','projects','board','faucet'].forEach(function(k){document.getElementById('v-'+k).classList.toggle('hidden',k!==t)});
+  var tabs=document.querySelectorAll('.tab'),m={submit:0,projects:1,board:2,faucet:3};
+  tabs.forEach(function(b,i){b.classList.toggle('on',i===m[t])});
+  if(t==='projects')lp();if(t==='board')llb();
+}
+
+function api(p,o){
+  o=o||{};var h=Object.assign({'Content-Type':'application/json'},o.headers||{});
+  delete o.headers;
+  return fetch(BASE+p,Object.assign({headers:h},o)).then(function(r){return r.json().then(function(d){if(!r.ok)throw new Error(d.error||'Error '+r.status);return d})});
+}
+
+function sub(e){
+  e.preventDefault();
+  var b=document.getElementById('sb'),m=document.getElementById('sm');
+  b.disabled=true;b.innerHTML='<span class="spin"></span> Submitting...';m.className='hidden';
+  api('/api/projects',{method:'POST',body:JSON.stringify({name:document.getElementById('s-name').value,description:document.getElementById('s-desc').value,tech_stack:document.getElementById('s-tech').value,og_features:document.getElementById('s-og').value,demo_url:document.getElementById('s-demo').value,repo_url:document.getElementById('s-repo').value,notes:document.getElementById('s-notes').value,wallet:W||''})}).then(function(d){
+    m.className='al aok mt4';m.innerHTML='&#10003; <strong>'+esc(d.project.name)+'</strong> submitted! ID: <code>'+d.project.id+'</code>';document.getElementById('sf').reset();
+  }).catch(function(e){m.className='al aer mt4';m.innerHTML='&#10005; '+esc(e.message)}).finally(function(){b.disabled=false;b.textContent='Submit Project'});
+}
+
+function lp(){
+  var l=document.getElementById('pl'),d=document.getElementById('pd');
+  d.classList.add('hidden');l.classList.remove('hidden');
+  l.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Loading...</div></div>';
+  api('/api/projects').then(function(r){
+    P=r.projects;if(!P.length){l.innerHTML='<div class="card"><div class="emp"><div class="emp-i">&#x1F4ED;</div><h3>No projects yet</h3><p>Submit your first project!</p></div></div>';return}
+    var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F4CB;</span>Projects ('+P.length+')</div></div>';
+    P.forEach(function(p){h+='<div class="pc" onclick="sp(\''+p.id+'\')"><div><div class="pcn">'+esc(p.name)+'</div><div class="pcd">'+esc(p.description)+'</div></div><span class="bdg '+(p.status==='evaluated'?'bde':'bds')+'">'+p.status+'</span></div>'});
+    l.innerHTML=h+'</div>';
+  }).catch(function(e){l.innerHTML='<div class="al aer">'+esc(e.message)+'</div>'});
+}
+
+function sp(id){
+  var l=document.getElementById('pl'),d=document.getElementById('pd');
+  l.classList.add('hidden');d.classList.remove('hidden');
+  var p=P.filter(function(x){return x.id===id})[0];if(!p)return;
+  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F50D;</span>'+esc(p.name)+'</div><div style="display:flex;gap:7px"><button class="btn bx bs" onclick="lp()">&#8592; Back</button><button class="btn bg bs" id="eb" onclick="ev(\''+p.id+'\')">&#9889; Evaluate with AI</button></div></div>';
+  h+='<p style="color:var(--t2);line-height:1.6;margin-bottom:18px;font-size:14px">'+esc(p.description)+'</p>';
+  if(p.tech_stack)h+='<div class="cr"><span class="cl">Tech Stack</span><span class="cv">'+esc(p.tech_stack)+'</span></div>';
+  if(p.og_features)h+='<div class="cr"><span class="cl">OG Features</span><span class="cv">'+esc(p.og_features)+'</span></div>';
+  if(p.demo_url)h+='<div class="cr"><span class="cl">Demo</span><a class="cv" href="'+esc(p.demo_url)+'" target="_blank">'+esc(p.demo_url)+'</a></div>';
+  if(p.repo_url)h+='<div class="cr"><span class="cl">Repo</span><a class="cv" href="'+esc(p.repo_url)+'" target="_blank">'+esc(p.repo_url)+'</a></div>';
+  h+='<div id="er"></div></div>';
+  d.innerHTML=h;
+}
+
+async function ev(id){
+  if(!W){alert('Please connect your wallet first!');return}
+  var b=document.getElementById('eb'),er=document.getElementById('er');
+  b.disabled=true;b.innerHTML='<span class="spin"></span> Evaluating...';
+  er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Sending on-chain transaction from your wallet...</div></div>';
+  try{
+   // Ensure correct network first
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x29F4'}]});
+    }catch(se){
+      if(se.code===4902){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
+      }
+    }
+    // Send on-chain transaction from user wallet
+    var tx = await window.ethereum.request({
+      method:'eth_sendTransaction',
+      params:[{
+        from:W,
+        to:W,
+        value:'0x0',
+        gas:'0x5208',
+        chainId:'0x29F4',
+        data:'0x'
+      }]
+    });
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Transaction sent! Running AI evaluation...</div></div>';
+    // Now call backend with tx hash
+    api('/api/evaluate/'+id,{method:'POST',body:JSON.stringify({tx_hash:tx,wallet:W})}).then(function(d){reval(d,er)}).catch(function(e){
+      er.innerHTML='<div class="al aer">&#10005; '+esc(e.message)+'</div>';
+    }).finally(function(){b.disabled=false;b.innerHTML='&#9889; Evaluate with AI'});
+  }catch(e){
+    er.innerHTML='<div class="al aer">&#10005; '+esc(e.message)+'</div>';
+    b.disabled=false;b.innerHTML='&#9889; Evaluate with AI';
+  }
+}
+
+function reval(d,el){
+  var v=d.evaluation,m=d.metadata;
+  var C=2*Math.PI*52,off=C-(v.weighted_total/100)*C,clr=sc(v.weighted_total);
+  var cats=[['innovation','Innovation',25],['technical','Technical',25],['ux','UX & Design',20],['completeness','Completeness',15],['impact','Impact',15]];
+  var h='<div class="dv"><span>Evaluation Result</span></div><div class="erh"><div class="rw"><svg viewBox="0 0 130 130"><circle class="rbg" cx="65" cy="65" r="52"/><circle class="rfg" cx="65" cy="65" r="52" stroke="'+clr+'" stroke-dasharray="'+C+'" stroke-dashoffset="'+off+'"/></svg><div class="rv">'+Math.round(v.weighted_total)+'<span class="rl">Score</span></div></div>';
+  h+='<div class="erm"><span class="tier '+tc(v.tier)+'">'+v.tier+'</span><p class="mt3">'+esc(v.summary)+'</p>';
+  h+='<div class="cr mt3"><span class="cl">Model</span><span class="cv">'+esc(m.model)+'</span><span class="cl">Mode</span><span class="cv">'+esc(m.inference_mode)+'</span><span class="cl">Time</span><span class="cv">'+m.inference_time_seconds+'s</span></div>';
+  if(m.explorer_url)h+='<div class="cr"><span class="cl">Tx</span><a class="vb" href="'+m.explorer_url+'" target="_blank">&#10003; Verify on-chain &#8599;</a></div>';
+  h+='</div></div><div class="dv"><span>Scores</span></div>';
+  cats.forEach(function(c){var s=v.scores[c[0]]||0;h+='<div class="br"><div class="bt"><span class="bn">'+c[1]+' <span style="color:var(--t3);font-size:11px">('+c[2]+'%)</span></span><span class="bv">'+s+'</span></div><div class="btr"><div class="bf" style="width:'+s+'%;background:'+sc(s)+'"></div></div></div>'});
+  h+='<div class="fbg"><div class="fbi"><h4>Strengths</h4><ul>';
+  (v.strengths||[]).forEach(function(s){h+='<li class="s">'+esc(s)+'</li>'});
+  h+='</ul></div><div class="fbi"><h4>Improvements</h4><ul>';
+  (v.improvements||[]).forEach(function(s){h+='<li class="i">'+esc(s)+'</li>'});
+  h+='</ul></div></div>';
+  el.innerHTML=h;
+}
+
+function llb(){
+  var el=document.getElementById('lw');
+  el.innerHTML='<div class="ld"><div class="spin"></div></div>';
+  api('/api/leaderboard').then(function(d){rlb(d.leaderboard)}).catch(function(){el.innerHTML='<div class="al aer">Failed to load leaderboard.</div>'});
+}
+
+function rlb(lb){
+  var el=document.getElementById('lw');
+  if(!lb||!lb.length){el.innerHTML='<div class="emp"><div class="emp-i">&#x1F3C5;</div><h3>No evaluations yet</h3><p>Submit and evaluate a project to appear here.</p></div>';return}
+  var h='';lb.forEach(function(e,i){
+    h+='<div class="lr" style="animation-delay:'+(i*.07)+'s"><div class="lrk">#'+e.rank+'</div><div><div class="lnm">'+esc(e.project_name)+'</div><span class="tier '+tc(e.tier)+'" style="margin-top:3px;font-size:10px">'+e.tier+'</span></div><div class="lsc">'+Math.round(e.score)+'</div>';
+    h+=e.explorer_url?'<a class="vb" href="'+e.explorer_url+'" target="_blank">Verify &#8599;</a>':'<div></div>';h+='</div>';
+  });el.innerHTML=h;
+}
+
+function sc(s){return s>=85?'var(--tier-s)':s>=70?'var(--tier-a)':s>=55?'var(--tier-b)':s>=40?'var(--tier-c)':'var(--tier-d)'}
+function tc(t){return{Outstanding:'ts',Excellent:'ta',Good:'tb','Needs Improvement':'tc',Insufficient:'td'}[t]||'tb'}
+</script>
+</body>
+</html>
