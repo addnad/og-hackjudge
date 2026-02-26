@@ -206,9 +206,9 @@ function uwui(){
   if(!W)return;
   var b=document.getElementById('wb');
   var sh=W.substring(0,6)+'...'+W.substring(38);
-  b.innerHTML='<span class="wdot"></span> '+sh;
+  b.innerHTML='<span class="wdot"></span> '+sh+' &times;';
   b.classList.add('on');
-  b.onclick=null;
+  b.onclick=function(){W=null;b.innerHTML='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="2" y="6" width="20" height="14" rx="3"/><path d="M16 14h.01"/><path d="M2 10h20"/></svg> Connect Wallet';b.classList.remove('on');b.onclick=cw;};
 }
 if(window.ethereum){
   window.ethereum.on('accountsChanged',function(a){
