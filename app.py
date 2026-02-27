@@ -1,17 +1,27 @@
 import os
 import uuid
 import time
+import json
+import pathlib
 from flask import Flask, request, jsonify
 from flask_cors import CORS
-from pymongo import MongoClient
 
 app = Flask(__name__)
 CORS(app)
 
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://addnad:samddnad10177@og-hackjudge.vvuwns9.mongodb.net/?appName=og-hackjudge')
-client = MongoClient(MONGO_URI)
-db = client['og_hackjudge']
-projects_col = db['projects']
+DATA_FILE = pathlib.Path('projects.json')
+
+def load_projects():
+    if DATA_FILE.exists():
+        with open(DATA_FILE) as f:
+            return json.load(f)
+    return {}
+
+def save_projects(projects):
+    with open(DATA_FILE, 'w') as f:
+        json.dump(projects, f)
+
+PROJECTS = load_projects()
 
 def score_project(p):
     desc = p.get('description', '')
@@ -74,21 +84,20 @@ def index():
 
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
-    projects = list(projects_col.find({}, {'_id': 0}).sort('created_at', -1))
-    return jsonify({"projects": projects})
+    return jsonify({"projects": list(PROJECTS.values())})
 
 @app.route("/api/projects", methods=["POST"])
 def submit_project():
     data = request.json
     pid = uuid.uuid4().hex[:8]
-    project = {"id": pid, "name": data.get("name",""), "description": data.get("description",""), "tech_stack": data.get("tech_stack",""), "og_features": data.get("og_features",""), "demo_url": data.get("demo_url",""), "repo_url": data.get("repo_url",""), "notes": data.get("notes",""), "wallet": data.get("wallet",""), "status": "pending", "created_at": time.time()}
-    projects_col.insert_one(project)
-    project.pop('_id', None)
+    project = {"id": pid, "name": data.get("name",""), "description": data.get("description",""), "tech_stack": data.get("tech_stack",""), "og_features": data.get("og_features",""), "demo_url": data.get("demo_url",""), "repo_url": data.get("repo_url",""), "notes": data.get("notes",""), "wallet": data.get("wallet",""), "status": "pending"}
+    PROJECTS[pid] = project
+    save_projects(PROJECTS)
     return jsonify({"project": project})
 
 @app.route("/api/evaluate/<pid>", methods=["POST"])
 def evaluate(pid):
-    p = projects_col.find_one({"id": pid}, {'_id': 0})
+    p = PROJECTS.get(pid)
     if not p:
         return jsonify({"error": "Project not found"}), 404
     try:
@@ -101,14 +110,16 @@ def evaluate(pid):
         start = time.time()
         evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
-        projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
+        PROJECTS[pid]["evaluation"] = evaluation
+        PROJECTS[pid]["status"] = "evaluated"
+        save_projects(PROJECTS)
         return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "HackJudge Scorer (On-Chain)", "inference_mode": "VANILLA", "inference_time_seconds": elapsed, "payment_hash": tx_hash, "explorer_url": f"https://explorer.opengradient.ai/tx/{tx_hash}"}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
-    evaluated = list(projects_col.find({"status": "evaluated"}, {'_id': 0}))
+    evaluated = [p for p in PROJECTS.values() if p.get("status") == "evaluated"]
     evaluated = sorted(evaluated, key=lambda x: x["evaluation"]["weighted_total"], reverse=True)
     lb = []
     for i, p in enumerate(evaluated):
