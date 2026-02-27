@@ -289,8 +289,14 @@ async function ev(id){
     try{
       await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x29F4'}]});
     }catch(se){
-      if(se.code===4902){
-        await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
+      if(se.code===4902||se.code===-32603){
+        try{
+          await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
+        }catch(ae){
+          console.log('Add network error:',ae);
+        }
+      }else{
+        console.log('Switch network error (continuing anyway):',se.code,se.message);
       }
     }
     // Send on-chain transaction from user wallet
