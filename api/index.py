@@ -8,7 +8,7 @@ from pymongo import MongoClient
 app = Flask(__name__)
 CORS(app)
 
-MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://addnad:samddnad10177@og-hackjudge.vvuwns9.mongodb.net/?appName=og-hackjudge')
+MONGO_URI = os.getenv('MONGO_URI')
 client = MongoClient(MONGO_URI)
 db = client['og_hackjudge']
 projects_col = db['projects']
