@@ -1,206 +1,119 @@
-from flask import Flask, request, jsonify, send_from_directory
+import os
+import uuid
+import time
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-from dotenv import load_dotenv
-import opengradient as og
-import uuid, os, json, time, pathlib
+from pymongo import MongoClient
 
-load_dotenv()
 app = Flask(__name__)
 CORS(app)
 
-DATA_FILE = pathlib.Path('projects.json')
-
-def load_projects():
-    if DATA_FILE.exists():
-        with open(DATA_FILE, 'r') as f:
-            return json.load(f)
-    return {}
-
-def save_projects():
-    with open(DATA_FILE, 'w') as f:
-        json.dump(PROJECTS, f)
-
-PROJECTS = load_projects()
-
-client = og.Client(private_key=os.getenv("OG_PRIVATE_KEY"))
+MONGO_URI = os.getenv('MONGO_URI', 'mongodb+srv://addnad:samddnad10177@og-hackjudge.vvuwns9.mongodb.net/?appName=og-hackjudge')
+client = MongoClient(MONGO_URI)
+db = client['og_hackjudge']
+projects_col = db['projects']
 
 def score_project(p):
     desc = p.get('description', '')
     tech = p.get('tech_stack', '')
-    og_feat = p.get('og_features', '')
+    og = p.get('og_features', '')
     demo = p.get('demo_url', '')
     repo = p.get('repo_url', '')
     notes = p.get('notes', '')
     name = p.get('name', '')
+    f1 = min(len(desc.split()) / 5, 10)
+    f2 = min(len([x for x in tech.split(',') if x.strip()]) * 2, 10)
+    f3 = min(len([x for x in og.split(',') if x.strip()]) * 2.5, 10)
+    f4 = min((1 if demo else 0) + (1 if repo else 0) + (1 if notes else 0) + (1 if name else 0), 4) * 2.5
+    innovation = min((f3 * 10 + f1 * 5) / 1.5, 25)
+    technical = min((f2 * 10 + f4 * 5) / 1.5, 25)
+    ux = min((f4 * 8 + f1 * 4) / 1.2, 20)
+    completeness = min(f4 * 0.625 * 4, 15)
+    impact = min((f1 * 6 + f3 * 6) / 1.2, 15)
+    total = round(innovation + technical + ux + completeness + impact, 1)
+    if total >= 85: tier = "Outstanding"
+    elif total >= 70: tier = "Excellent"
+    elif total >= 55: tier = "Good"
+    elif total >= 40: tier = "Needs Improvement"
+    else: tier = "Insufficient"
+    strengths, improvements = [], []
+    if f2 >= 6: strengths.append("Strong and diverse tech stack")
+    if f3 >= 5: strengths.append("Good use of OpenGradient features")
+    if f1 >= 6: strengths.append("Detailed project description")
+    if demo and repo: strengths.append("Complete project with demo and repo")
+    if not strengths: strengths.append("Shows initiative in building on OpenGradient")
+    if f1 < 6: improvements.append("Add more detail to your project description")
+    if f2 < 6: improvements.append("Expand your tech stack details")
+    if f3 < 5: improvements.append("Integrate more OpenGradient features")
+    if not demo or not repo: improvements.append("Add a demo URL and repo link")
+    return {
+        "weighted_total": total, "tier": tier,
+        "scores": {"innovation": round(innovation,1), "technical": round(technical,1), "ux": round(ux,1), "completeness": round(completeness,1), "impact": round(impact,1)},
+        "summary": f"This project scored {total}/100. {tier} execution with strong use of OpenGradient technology.",
+        "strengths": strengths, "improvements": improvements,
+        "detailed_feedback": {
+            "innovation": f"Innovation score: {round(innovation,1)}/25 based on description depth and OG feature usage.",
+            "technical": f"Technical score: {round(technical,1)}/25 based on tech stack and completeness.",
+            "ux": f"UX score: {round(ux,1)}/20 based on project presentation.",
+            "completeness": f"Completeness score: {round(completeness,1)}/15 based on demo, repo, and notes.",
+            "impact": f"Impact score: {round(impact,1)}/15 based on description and OG integration."
+        }
+    }
 
-    desc_score = min(len(desc.split()) / 5, 10)
-    tech_score = min(len([t for t in tech.split(',') if t.strip()]) * 2, 10)
-    og_score = min(len([t for t in og_feat.split(',') if t.strip()]) * 2.5, 10)
-    complete_score = sum([
-        3 if demo else 0,
-        3 if repo else 0,
-        2 if notes else 0,
-        2 if len(name) > 3 else 0
-    ])
-
-    return [desc_score, tech_score, og_score, float(complete_score)]
-
-@app.route('/')
+@app.route("/")
 def landing():
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(os.path.join(base, 'landing.html'), 'r') as f:
-        return f.read(), 200, {'Content-Type': 'text/html'}
+    with open(os.path.join(base, "landing.html"), "r") as f:
+        return f.read(), 200, {"Content-Type": "text/html"}
 
-@app.route('/app')
+@app.route("/app")
 def index():
     base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    with open(os.path.join(base, 'index.html'), 'r') as f:
-        return f.read(), 200, {'Content-Type': 'text/html'}
+    with open(os.path.join(base, "index.html"), "r") as f:
+        return f.read(), 200, {"Content-Type": "text/html"}
 
-@app.route('/api/projects', methods=['GET'])
+@app.route("/api/projects", methods=["GET"])
 def get_projects():
-    return jsonify({"projects": list(PROJECTS.values())})
+    projects = list(projects_col.find({}, {'_id': 0}).sort('created_at', -1))
+    return jsonify({"projects": projects})
 
-@app.route('/api/projects', methods=['POST'])
+@app.route("/api/projects", methods=["POST"])
 def submit_project():
     data = request.json
-    pid = str(uuid.uuid4())[:8]
-    project = {
-        "id": pid,
-        "name": data.get("name"),
-        "description": data.get("description"),
-        "tech_stack": data.get("tech_stack", ""),
-        "og_features": data.get("og_features", ""),
-        "demo_url": data.get("demo_url", ""),
-        "repo_url": data.get("repo_url", ""),
-        "notes": data.get("notes", ""),
-        "wallet": data.get("wallet", ""),
-        "status": "pending"
-    }
-    PROJECTS[pid] = project
-    save_projects()
+    pid = uuid.uuid4().hex[:8]
+    project = {"id": pid, "name": data.get("name",""), "description": data.get("description",""), "tech_stack": data.get("tech_stack",""), "og_features": data.get("og_features",""), "demo_url": data.get("demo_url",""), "repo_url": data.get("repo_url",""), "notes": data.get("notes",""), "wallet": data.get("wallet",""), "status": "pending", "created_at": time.time()}
+    projects_col.insert_one(project)
+    project.pop('_id', None)
     return jsonify({"project": project})
 
-@app.route('/api/evaluate/<pid>', methods=['POST'])
+@app.route("/api/evaluate/<pid>", methods=["POST"])
 def evaluate(pid):
-    if pid not in PROJECTS:
+    p = projects_col.find_one({"id": pid}, {'_id': 0})
+    if not p:
         return jsonify({"error": "Project not found"}), 404
-    p = PROJECTS[pid]
-
     try:
-        start = time.time()
-
-        # Check wallet ownership
         data_check = request.json
-        submitter_wallet = p.get('wallet', '').lower()
-        evaluator_wallet = data_check.get('wallet', '').lower()
+        submitter_wallet = p.get("wallet", "").lower()
+        evaluator_wallet = data_check.get("wallet", "").lower()
         if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
-            return jsonify({'error': 'Only the project owner can evaluate this project.'}), 403
-
-        features = score_project(p)
-        f1, f2, f3, f4 = features
-
-        data = request.json
-        tx_hash = data.get('tx_hash', 'N/A')
+            return jsonify({"error": "Only the project owner can evaluate this project."}), 403
+        tx_hash = data_check.get("tx_hash", "")
+        start = time.time()
+        evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
-
-        innovation = min(round((f3 * 10 + f1 * 5) / 1.5, 1), 25)
-        technical = min(round((f2 * 10 + f4 * 5) / 1.5, 1), 25)
-        ux = min(round((f4 * 8 + f1 * 4) / 1.2, 1), 20)
-        completeness = min(round(f4 * 10, 1), 15)
-        impact = min(round((f1 * 6 + f3 * 6) / 1.2, 1), 15)
-
-        weighted_total = round(innovation + technical + ux + completeness + impact, 1)
-
-        if weighted_total >= 85:
-            tier = "Outstanding"
-        elif weighted_total >= 70:
-            tier = "Excellent"
-        elif weighted_total >= 55:
-            tier = "Good"
-        elif weighted_total >= 40:
-            tier = "Needs Improvement"
-        else:
-            tier = "Insufficient"
-
-        strengths = []
-        improvements = []
-        if f1 >= 7: strengths.append("Detailed and clear project description")
-        else: improvements.append("Add more detail to your project description")
-        if f2 >= 6: strengths.append("Strong and diverse tech stack")
-        else: improvements.append("Expand your tech stack details")
-        if f3 >= 5: strengths.append("Good use of OpenGradient features")
-        else: improvements.append("Integrate more OpenGradient features")
-        if f4 >= 7: strengths.append("Project appears complete with demo and repo")
-        else: improvements.append("Add a demo URL and repo link")
-
-        evaluation = {
-            "scores": {
-                "innovation": innovation,
-                "technical": technical,
-                "ux": ux,
-                "completeness": completeness,
-                "impact": impact
-            },
-            "weighted_total": weighted_total,
-            "tier": tier,
-            "summary": f"This project scored {weighted_total}/100. {tier} execution with {'strong' if weighted_total > 70 else 'developing'} use of OpenGradient technology.",
-            "strengths": strengths if strengths else ["Shows initiative in building on OpenGradient"],
-            "improvements": improvements if improvements else ["Keep building and expanding the project"],
-            "detailed_feedback": {
-                "innovation": f"Innovation score: {innovation}/25 based on description depth and OG feature usage.",
-                "technical": f"Technical score: {technical}/25 based on tech stack and completeness.",
-                "ux": f"UX score: {ux}/20 based on project presentation.",
-                "completeness": f"Completeness score: {completeness}/15 based on demo, repo, and notes.",
-                "impact": f"Impact score: {impact}/15 based on description and OG integration."
-            }
-        }
-
-        p["status"] = "evaluated"
-        p["evaluation"] = evaluation
-        save_projects()
-
-        explorer_url = f"https://explorer.opengradient.ai/tx/{tx_hash}" if tx_hash and tx_hash != "N/A" else ""
-
-        return jsonify({
-            "project_name": p["name"],
-            "evaluation": evaluation,
-            "metadata": {
-                "model": "Iris Classifier (On-Chain)",
-                "inference_mode": "VANILLA",
-                "inference_time_seconds": elapsed,
-                "payment_hash": tx_hash,
-                "explorer_url": explorer_url
-            }
-        })
-
+        projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
+        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "HackJudge Scorer (On-Chain)", "inference_mode": "VANILLA", "inference_time_seconds": elapsed, "payment_hash": tx_hash, "explorer_url": f"https://explorer.opengradient.ai/tx/{tx_hash}"}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-@app.route('/api/leaderboard', methods=['GET'])
+@app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
-    evaluated = [p for p in PROJECTS.values() if p.get("status") == "evaluated"]
-    evaluated.sort(key=lambda x: x["evaluation"]["weighted_total"], reverse=True)
+    evaluated = list(projects_col.find({"status": "evaluated"}, {'_id': 0}))
+    evaluated = sorted(evaluated, key=lambda x: x["evaluation"]["weighted_total"], reverse=True)
     lb = []
     for i, p in enumerate(evaluated):
-        lb.append({
-            "rank": i + 1,
-            "project_name": p["name"],
-            "description": p.get("description", ""),
-            "tech_stack": p.get("tech_stack", ""),
-            "og_features": p.get("og_features", ""),
-            "demo_url": p.get("demo_url", ""),
-            "repo_url": p.get("repo_url", ""),
-            "wallet": p.get("wallet", ""),
-            "score": p["evaluation"]["weighted_total"],
-            "tier": p["evaluation"]["tier"],
-            "scores": p["evaluation"]["scores"],
-            "summary": p["evaluation"]["summary"],
-            "strengths": p["evaluation"]["strengths"],
-            "improvements": p["evaluation"]["improvements"],
-            "explorer_url": ""
-        })
+        lb.append({"rank": i+1, "project_name": p["name"], "description": p.get("description",""), "tech_stack": p.get("tech_stack",""), "og_features": p.get("og_features",""), "demo_url": p.get("demo_url",""), "repo_url": p.get("repo_url",""), "wallet": p.get("wallet",""), "score": p["evaluation"]["weighted_total"], "tier": p["evaluation"]["tier"], "scores": p["evaluation"]["scores"], "summary": p["evaluation"]["summary"], "strengths": p["evaluation"]["strengths"], "improvements": p["evaluation"]["improvements"], "explorer_url": ""})
     return jsonify({"leaderboard": lb})
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True, port=8000)
