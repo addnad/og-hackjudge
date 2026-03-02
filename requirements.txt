@@ -4,3 +4,4 @@ python-dotenv
 opengradient
 gunicorn
 pymongo[srv]
+httpx
