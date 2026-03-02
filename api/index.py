@@ -99,9 +99,13 @@ def score_project(p, payment_signature=None):
                 if response.status_code == 200:
                     result = response.json()
                     output = result["choices"][0]["message"]["content"]
-                    return parse_llm_output(output)
+                    # Extract real tx hash from response headers or body
+                    real_tx = response.headers.get("x-payment-receipt", "") or                               response.headers.get("x-transaction-hash", "") or                               result.get("payment_receipt", {}).get("transaction_hash", "") or ""
+                    evaluation = parse_llm_output(output)
+                    evaluation["_payment_tx"] = real_tx
+                    return evaluation
                 else:
-                    print(f"User payment failed ({response.status_code}), falling back to server wallet")
+                    print(f"User payment failed ({response.status_code}): {response.text[:200]}, falling back to server wallet")
 
         # Fall back to server wallet
         client = get_og_client()
@@ -112,7 +116,9 @@ def score_project(p, payment_signature=None):
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
         output = result.chat_output.get("content", "").strip()
-        return parse_llm_output(output)
+        evaluation = parse_llm_output(output)
+        evaluation["_payment_tx"] = getattr(result, "transaction_hash", "") or ""
+        return evaluation
     except Exception as e:
         print(f"LLM scoring failed: {e}, falling back to algorithmic")
         return fallback_score(p)
@@ -169,11 +175,15 @@ def evaluate(pid):
         if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
             return jsonify({"error": "Only the project owner can evaluate this project."}), 403
         tx_hash = data_check.get("tx_hash", "")
+        payment_signature = data_check.get("payment_signature", None)
         start = time.time()
-        evaluation = score_project(p)
+        evaluation = score_project(p, payment_signature=payment_signature)
         elapsed = round(time.time() - start, 2)
+        evaluation.pop("_payment_tx", "")
+        wallet = data_check.get("wallet", "")
+        base_sepolia_url = f"https://sepolia.basescan.org/address/{wallet}#tokentxns" if wallet else "https://sepolia.basescan.org"
         projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
-        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": tx_hash, "explorer_url": f"https://explorer.opengradient.ai/tx/{tx_hash}"}})
+        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": "x402-opg-settled", "explorer_url": base_sepolia_url}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
