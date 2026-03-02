@@ -181,7 +181,7 @@ def evaluate(pid):
         elapsed = round(time.time() - start, 2)
         evaluation.pop("_payment_tx", "")
         wallet = data_check.get("wallet", "")
-        base_sepolia_url = f"https://sepolia.basescan.org/address/{wallet}#tokentxns" if wallet else "https://sepolia.basescan.org"
+        base_sepolia_url = f"https://sepolia.basescan.org/token/0x240b09731D96979f50B2C649C9CE10FcF9C7987F?a={wallet}" if wallet else "https://sepolia.basescan.org"
         projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
         return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": "x402-opg-settled", "explorer_url": base_sepolia_url}})
     except Exception as e:
