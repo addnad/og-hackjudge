@@ -60,7 +60,7 @@ Output **ONLY** valid JSON, no explanations, no markdown, no code blocks, nothin
             messages=[{"role": "user", "content": prompt}],
             max_tokens=800,
             temperature=0.6,
-            x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
+            x402_settlement_mode=og.x402SettlementMode.SETTLE_METADATA
         )
 
         output = result.chat_output["content"]
@@ -243,3 +243,9 @@ def evaluate(pid):
         }
     })
 
+@app.route("/debug-routes")
+def debug_routes():
+    import urllib
+    rules = sorted(app.url_map.iter_rules(), key=lambda r: str(r))
+    return "<pre>" + "
+".join(str(r) for r in rules) + "</pre>"
