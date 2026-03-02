@@ -127,7 +127,9 @@ def evaluate(pid):
         evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
         projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
-        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": "x402-opg", "explorer_url": ""}})
+        server_wallet = "0x13F0775b1BA55280613159fAF52417885091ffC1"
+        explorer_url = f"https://sepolia.basescan.org/token/0x240b09731D96979f50B2C649C9CE10FcF9C7987F?a={server_wallet}"
+        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": "x402-opg", "explorer_url": explorer_url}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
