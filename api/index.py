@@ -27,24 +27,17 @@ def get_og_client():
 
 base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-def score_project(p):
-    desc = p.get("description", "")
-    tech = p.get("tech_stack", "")
-    og_features = p.get("og_features", "")
-    demo = p.get("demo_url", "")
-    repo = p.get("repo_url", "")
-    notes = p.get("notes", "")
-    name = p.get("name", "")
-    prompt = f"""You are an expert hackathon judge evaluating projects built on OpenGradient.
+def build_prompt(p):
+    return f"""You are an expert hackathon judge evaluating projects built on OpenGradient.
 Score this project across 5 categories. Respond ONLY with valid JSON, no markdown, no explanation.
 
-Project Name: {name}
-Description: {desc}
-Tech Stack: {tech}
-OpenGradient Features Used: {og_features}
-Demo URL: {demo}
-Repo URL: {repo}
-Notes: {notes}
+Project Name: {p.get("name","")}
+Description: {p.get("description","")}
+Tech Stack: {p.get("tech_stack","")}
+OpenGradient Features Used: {p.get("og_features","")}
+Demo URL: {p.get("demo_url","")}
+Repo URL: {p.get("repo_url","")}
+Notes: {p.get("notes","")}
 
 Respond with this exact JSON structure:
 {{
@@ -56,38 +49,73 @@ Respond with this exact JSON structure:
   "improvements": ["<improvement1>", "<improvement2>"],
   "detailed_feedback": {{"innovation": "<fb>", "technical": "<fb>", "ux": "<fb>", "completeness": "<fb>", "impact": "<fb>"}}
 }}"""
+
+def parse_llm_output(output):
+    output = output.strip()
+    if output.startswith("```"):
+        output = output.split("```")[1]
+        if output.startswith("json"):
+            output = output[4:]
+    return json.loads(output.strip())
+
+def fallback_score(p):
+    desc = p.get("description",""); tech = p.get("tech_stack","")
+    og_features = p.get("og_features",""); demo = p.get("demo_url","")
+    repo = p.get("repo_url",""); notes = p.get("notes",""); name = p.get("name","")
+    f1=min(len(desc.split())/5,10); f2=min(len([x for x in tech.split(",") if x.strip()])*2,10)
+    f3=min(len([x for x in og_features.split(",") if x.strip()])*2.5,10)
+    f4=min((1 if demo else 0)+(1 if repo else 0)+(1 if notes else 0)+(1 if name else 0),4)*2.5
+    innovation=min((f3*10+f1*5)/1.5,25); technical=min((f2*10+f4*5)/1.5,25)
+    ux=min((f4*8+f1*4)/1.2,20); completeness=min(f4*0.625*4,15); impact=min((f1*6+f3*6)/1.2,15)
+    total=round(innovation+technical+ux+completeness+impact,1)
+    if total>=85: tier="Outstanding"
+    elif total>=70: tier="Excellent"
+    elif total>=55: tier="Good"
+    elif total>=40: tier="Needs Improvement"
+    else: tier="Insufficient"
+    return {"weighted_total":total,"tier":tier,"scores":{"innovation":round(innovation,1),"technical":round(technical,1),"ux":round(ux,1),"completeness":round(completeness,1),"impact":round(impact,1)},"summary":f"This project scored {total}/100.","strengths":["Shows initiative in building on OpenGradient"],"improvements":["Add more detail to your submission"],"detailed_feedback":{"innovation":"N/A","technical":"N/A","ux":"N/A","completeness":"N/A","impact":"N/A"}}
+
+def score_project(p, payment_signature=None):
+    import httpx, base64
+    from x402v2.http.x402_http_client import x402HTTPClientSync
+    from x402v2 import x402ClientSync
+    from x402v2.mechanisms.evm import EthAccountSigner
+    from x402v2.mechanisms.evm.upto.register import register_upto_evm_client
+    from eth_account import Account
+
+    prompt = build_prompt(p)
+    messages = [{"role": "user", "content": prompt}]
+    payload = {"model": "anthropic/claude-3.5-haiku", "messages": messages, "max_tokens": 800}
+
     try:
+        if payment_signature:
+            # Use user-provided payment signature directly
+            with httpx.Client(timeout=60) as http:
+                response = http.post(
+                    "https://llm.opengradient.ai/v1/chat/completions",
+                    json=payload,
+                    headers={"PAYMENT-SIGNATURE": payment_signature, "X-SETTLEMENT-TYPE": "batch"}
+                )
+                if response.status_code == 200:
+                    result = response.json()
+                    output = result["choices"][0]["message"]["content"]
+                    return parse_llm_output(output)
+                else:
+                    print(f"User payment failed ({response.status_code}), falling back to server wallet")
+
+        # Fall back to server wallet
         client = get_og_client()
         result = client.llm.chat(
             model=og.TEE_LLM.CLAUDE_HAIKU_4_5,
-            messages=[{"role": "user", "content": prompt}],
+            messages=messages,
             max_tokens=800,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
         output = result.chat_output.get("content", "").strip()
-        if output.startswith("```"):
-            output = output.split("```")[1]
-            if output.startswith("json"):
-                output = output[4:]
-        return json.loads(output.strip())
+        return parse_llm_output(output)
     except Exception as e:
-        print(f"LLM scoring failed: {e}, falling back")
-        f1 = min(len(desc.split()) / 5, 10)
-        f2 = min(len([x for x in tech.split(",") if x.strip()]) * 2, 10)
-        f3 = min(len([x for x in og_features.split(",") if x.strip()]) * 2.5, 10)
-        f4 = min((1 if demo else 0) + (1 if repo else 0) + (1 if notes else 0) + (1 if name else 0), 4) * 2.5
-        innovation = min((f3 * 10 + f1 * 5) / 1.5, 25)
-        technical = min((f2 * 10 + f4 * 5) / 1.5, 25)
-        ux = min((f4 * 8 + f1 * 4) / 1.2, 20)
-        completeness = min(f4 * 0.625 * 4, 15)
-        impact = min((f1 * 6 + f3 * 6) / 1.2, 15)
-        total = round(innovation + technical + ux + completeness + impact, 1)
-        if total >= 85: tier = "Outstanding"
-        elif total >= 70: tier = "Excellent"
-        elif total >= 55: tier = "Good"
-        elif total >= 40: tier = "Needs Improvement"
-        else: tier = "Insufficient"
-        return {"weighted_total": total, "tier": tier, "scores": {"innovation": round(innovation,1), "technical": round(technical,1), "ux": round(ux,1), "completeness": round(completeness,1), "impact": round(impact,1)}, "summary": f"This project scored {total}/100.", "strengths": ["Shows initiative in building on OpenGradient"], "improvements": ["Add more detail to your submission"], "detailed_feedback": {"innovation": "N/A", "technical": "N/A", "ux": "N/A", "completeness": "N/A", "impact": "N/A"}}
+        print(f"LLM scoring failed: {e}, falling back to algorithmic")
+        return fallback_score(p)
 
 @app.route("/")
 def landing():
@@ -98,6 +126,24 @@ def landing():
 def index():
     with open(os.path.join(base, "index.html"), "r") as f:
         return f.read(), 200, {"Content-Type": "text/html"}
+
+@app.route("/api/payment-requirements", methods=["GET"])
+def payment_requirements():
+    import httpx
+    try:
+        with httpx.Client(timeout=10) as http:
+            response = http.post(
+                "https://llm.opengradient.ai/v1/chat/completions",
+                json={"model": "anthropic/claude-3.5-haiku", "messages": [{"role": "user", "content": "hi"}], "max_tokens": 1}
+            )
+            if response.status_code == 402:
+                import base64, json as j
+                pr_header = response.headers.get("payment-required", "")
+                decoded = j.loads(base64.b64decode(pr_header + "==").decode())
+                return jsonify({"payment_required": decoded})
+            return jsonify({"error": "Unexpected status", "status": response.status_code}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route("/api/projects", methods=["GET"])
 def get_projects():

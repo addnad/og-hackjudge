@@ -283,36 +283,120 @@ async function ev(id){
   if(!W){alert('Please connect your wallet first!');return}
   var b=document.getElementById('eb'),er=document.getElementById('er');
   b.disabled=true;b.innerHTML='<span class="spin"></span> Evaluating...';
-  er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Sending on-chain transaction from your wallet...</div></div>';
+  er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Step 1/3: Switching to Base Sepolia for OPG payment...</div></div>';
   try{
-   // Ensure correct network first
+    // STEP 1: Switch to Base Sepolia for OPG payment
+    var BASE_SEPOLIA = {
+      chainId:'0x14A34',
+      chainName:'Base Sepolia',
+      nativeCurrency:{name:'Ethereum',symbol:'ETH',decimals:18},
+      rpcUrls:['https://sepolia.base.org'],
+      blockExplorerUrls:['https://sepolia.basescan.org']
+    };
+    try{
+      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x14A34'}]});
+    }catch(se){
+      if(se.code===4902||se.code===-32603){
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[BASE_SEPOLIA]});
+      }
+    }
+
+    // STEP 2: Get payment requirements from server
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Step 2/3: Getting payment requirements...</div></div>';
+    var prRes = await fetch('/api/payment-requirements');
+    var prData = await prRes.json();
+    if(!prData.payment_required) throw new Error('Could not get payment requirements');
+    
+    // Find OPG on Base Sepolia requirement
+    var accepts = prData.payment_required.accepts;
+    var opgReq = accepts.find(function(a){ return a.network==='eip155:84532' && a.extra && a.extra.name==='OPG'; });
+    if(!opgReq) throw new Error('OPG payment requirement not found');
+
+    // STEP 3: Sign Permit2 EIP-712 message for OPG payment
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Step 3/3: Sign OPG payment in your wallet...</div></div>';
+    
+    var PERMIT2 = '0xA2820a4d4F3A8c5Fa4eaEBF45B093173105a8f8F';
+    var OPG_TOKEN = '0x240b09731D96979f50B2C649C9CE10FcF9C7987F';
+    var PROXY = '0xdB9F7863C9E06Daf21aD43663a06a2f43d303Fa7';
+    var deadline = Math.floor(Date.now()/1000) + 600;
+    var nonce = Math.floor(Math.random() * 2**52);
+    var amount = opgReq.amount;
+    var payTo = opgReq.payTo;
+
+    var domain = {
+      name: 'Permit2',
+      chainId: 84532,
+      verifyingContract: PERMIT2
+    };
+    var types = {
+      PermitWitnessTransferFrom: [
+        {name:'permitted', type:'TokenPermissions'},
+        {name:'spender', type:'address'},
+        {name:'nonce', type:'uint256'},
+        {name:'deadline', type:'uint256'},
+        {name:'witness', type:'Witness'}
+      ],
+      TokenPermissions: [
+        {name:'token', type:'address'},
+        {name:'amount', type:'uint256'}
+      ],
+      Witness: [
+        {name:'to', type:'address'},
+        {name:'validAfter', type:'uint256'},
+        {name:'extra', type:'bytes'}
+      ]
+    };
+    var validAfter = Math.floor(Date.now()/1000) - 30;
+    var message = {
+      permitted: {token: OPG_TOKEN, amount: amount},
+      spender: PROXY,
+      nonce: nonce,
+      deadline: deadline,
+      witness: {to: payTo, validAfter: validAfter, extra: '0x'}
+    };
+
+    var signature = await window.ethereum.request({
+      method: 'eth_signTypedData_v4',
+      params: [W, JSON.stringify({domain, types, primaryType:'PermitWitnessTransferFrom', message})]
+    });
+
+    // Build payment payload
+    var paymentPayload = {
+      x402Version: 2,
+      payload: {
+        permit2Authorization: {
+          permitted: {token: OPG_TOKEN, amount: amount},
+          spender: PROXY,
+          nonce: String(nonce),
+          deadline: String(deadline),
+          witness: {to: payTo, validAfter: String(validAfter), extra: '0x'},
+          from: W
+        },
+        signature: signature
+      },
+      accepted: opgReq,
+      resource: prData.payment_required.resource
+    };
+    var paymentSignature = btoa(JSON.stringify(paymentPayload));
+
+    // Switch back to OG chain for proof tx
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Payment signed! Sending proof on OG chain...</div></div>';
     try{
       await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x29F4'}]});
     }catch(se){
       if(se.code===4902||se.code===-32603){
-        try{
-          await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
-        }catch(ae){
-          console.log('Add network error:',ae);
-        }
-      }else{
-        console.log('Switch network error (continuing anyway):',se.code,se.message);
+        await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
       }
     }
-    // Send on-chain transaction from user wallet
+
+    // Send proof tx on OG chain
     var tx = await window.ethereum.request({
       method:'eth_sendTransaction',
-      params:[{
-        from:W,
-        to:W,
-        value:'0x0',
-        gas:'0x5208',
-        data:'0x'
-      }]
+      params:[{from:W,to:W,value:'0x0',gas:'0x5208',data:'0x'}]
     });
-    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Transaction sent! Running AI evaluation...</div></div>';
-    // Now call backend with tx hash
-    api('/api/evaluate/'+id,{method:'POST',body:JSON.stringify({tx_hash:tx,wallet:W})}).then(function(d){reval(d,er)}).catch(function(e){
+
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Running TEE-verified AI evaluation...</div></div>';
+    api('/api/evaluate/'+id,{method:'POST',body:JSON.stringify({tx_hash:tx,wallet:W,payment_signature:paymentSignature})}).then(function(d){reval(d,er)}).catch(function(e){
       er.innerHTML='<div class="al aer">&#10005; '+esc(e.message)+'</div>';
     }).finally(function(){b.disabled=false;b.innerHTML='&#9889; Evaluate with AI'});
   }catch(e){
