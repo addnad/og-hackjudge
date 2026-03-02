@@ -379,24 +379,9 @@ async function ev(id){
     };
     var paymentSignature = btoa(JSON.stringify(paymentPayload));
 
-    // Switch back to OG chain for proof tx
-    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Payment signed! Sending proof on OG chain...</div></div>';
-    try{
-      await window.ethereum.request({method:'wallet_switchEthereumChain',params:[{chainId:'0x29F4'}]});
-    }catch(se){
-      if(se.code===4902||se.code===-32603){
-        await window.ethereum.request({method:'wallet_addEthereumChain',params:[OGC]});
-      }
-    }
-
-    // Send proof tx on OG chain
-    var tx = await window.ethereum.request({
-      method:'eth_sendTransaction',
-      params:[{from:W,to:W,value:'0x0',gas:'0x5208',data:'0x'}]
-    });
-
-    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Running TEE-verified AI evaluation...</div></div>';
-    api('/api/evaluate/'+id,{method:'POST',body:JSON.stringify({tx_hash:tx,wallet:W,payment_signature:paymentSignature})}).then(function(d){reval(d,er)}).catch(function(e){
+    // Payment signed - TEE proof settles automatically on OG network
+    er.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Payment signed! Running TEE-verified AI evaluation...</div></div>';
+    api('/api/evaluate/'+id,{method:'POST',body:JSON.stringify({tx_hash:'x402-opg-payment',wallet:W,payment_signature:paymentSignature})}).then(function(d){reval(d,er)}).catch(function(e){
       er.innerHTML='<div class="al aer">&#10005; '+esc(e.message)+'</div>';
     }).finally(function(){b.disabled=false;b.innerHTML='&#9889; Evaluate with AI'});
   }catch(e){
