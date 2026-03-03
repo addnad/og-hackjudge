@@ -85,7 +85,10 @@ def score_project(p):
             max_tokens=800,
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
-        return parse_llm_output(result.chat_output.get("content", "").strip())
+        evaluation = parse_llm_output(result.chat_output.get("content", "").strip())
+        evaluation["_tee_signature"] = getattr(result, "tee_signature", "") or ""
+        evaluation["_tee_timestamp"] = getattr(result, "tee_timestamp", "") or ""
+        return evaluation
     except Exception as e:
         print(f"LLM scoring failed: {e}, falling back to algorithmic")
         return fallback_score(p)
@@ -127,9 +130,10 @@ def evaluate(pid):
         evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
         projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
-        server_wallet = "0x13F0775b1BA55280613159fAF52417885091ffC1"
-        explorer_url = f"https://sepolia.basescan.org/token/0x240b09731D96979f50B2C649C9CE10FcF9C7987F?a={server_wallet}"
-        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "payment_hash": "x402-opg", "explorer_url": explorer_url}})
+        tee_sig = evaluation.pop("_tee_signature", "") or ""
+        tee_ts = evaluation.pop("_tee_timestamp", "") or ""
+        projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "tee_signature": tee_sig, "tee_timestamp": tee_ts, "status": "evaluated"}})
+        return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "tee_signature": tee_sig, "tee_timestamp": tee_ts, "payment_hash": "x402-opg"}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
