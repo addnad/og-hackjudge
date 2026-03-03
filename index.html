@@ -176,6 +176,7 @@ a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
 
 <section id="v-board" class="hidden"><div class="card">
   <div class="ch"><div class="ct"><span class="ico">&#x1F3C6;</span>Leaderboard</div><button class="btn bo bs" onclick="llb()">Refresh</button></div>
+  <div style="margin-bottom:16px"><input id="lb-search" class="fi" type="text" placeholder="&#128269; Search projects..." oninput="flb(this.value)" style="max-width:340px"></div>
   <div id="lw"></div>
 </div></section>
 
@@ -306,10 +307,22 @@ function reval(d,el){
   el.innerHTML=h;
 }
 
+var LB_DATA=[];
+function flb(q){
+  q=q.toLowerCase().trim();
+  if(!q)return rlb(LB_DATA);
+  rlb(LB_DATA.filter(function(e){
+    return (e.project_name||'').toLowerCase().includes(q)||
+           (e.description||'').toLowerCase().includes(q)||
+           (e.tech_stack||'').toLowerCase().includes(q)||
+           (e.wallet||'').toLowerCase().includes(q)||
+           (e.tier||'').toLowerCase().includes(q);
+  }));
+}
 function llb(){
   var el=document.getElementById('lw');
   el.innerHTML='<div class="ld"><div class="spin"></div></div>';
-  api('/api/leaderboard').then(function(d){rlb(d.leaderboard)}).catch(function(){el.innerHTML='<div class="al aer">Failed to load leaderboard.</div>'});
+  api('/api/leaderboard').then(function(d){LB_DATA=d.leaderboard||[];rlb(LB_DATA)}).catch(function(){el.innerHTML='<div class="al aer">Failed to load leaderboard.</div>'});
 }
 
 function rlb(lb){
