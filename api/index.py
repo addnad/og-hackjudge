@@ -116,7 +116,7 @@ def get_projects():
 
 @app.route("/api/projects", methods=["POST"])
 def submit_project():
-    data = request.json
+    data = request.json or {}
     project = {"id": str(uuid.uuid4())[:8], "name": data.get("name", ""), "description": data.get("description", ""), "tech_stack": data.get("tech_stack", ""), "og_features": data.get("og_features", ""), "demo_url": data.get("demo_url", ""), "repo_url": data.get("repo_url", ""), "notes": data.get("notes", ""), "wallet": data.get("wallet", ""), "status": "pending", "created_at": time.time()}
     get_col().insert_one(project)
     return jsonify({"project": project})
