@@ -173,7 +173,7 @@ def leaderboard():
     all_evaluated = list(get_col().find({"status": "evaluated"}, {"_id": 0}))
     valid = [p for p in all_evaluated if p.get("evaluation") and isinstance(p["evaluation"].get("weighted_total"), (int, float))]
     valid = sorted(valid, key=lambda x: x["evaluation"]["weighted_total"], reverse=True)
-    lb = [{"rank": i+1, "project_name": p["name"], "description": p.get("description",""), "tech_stack": p.get("tech_stack",""), "og_features": p.get("og_features",""), "demo_url": p.get("demo_url",""), "repo_url": p.get("repo_url",""), "wallet": p.get("wallet",""), "score": p["evaluation"]["weighted_total"], "tier": p["evaluation"]["tier"], "scores": p["evaluation"].get("scores",{}), "summary": p["evaluation"].get("summary",""), "strengths": p["evaluation"].get("strengths",[]), "improvements": p["evaluation"].get("improvements",[])} for i, p in enumerate(valid)]
+    lb = [{"rank": i+1, "project_name": p["name"], "description": p.get("description",""), "tech_stack": p.get("tech_stack",""), "og_features": p.get("og_features",""), "demo_url": p.get("demo_url",""), "repo_url": p.get("repo_url",""), "wallet": p.get("wallet",""), "score": p["evaluation"]["weighted_total"], "tier": p["evaluation"]["tier"], "scores": p["evaluation"].get("scores",{}), "summary": p["evaluation"].get("summary",""), "strengths": p["evaluation"].get("strengths",[]), "improvements": p["evaluation"].get("improvements",[]), "tee_signature": p.get("tee_signature","")} for i, p in enumerate(valid)]
     return jsonify({"leaderboard": lb})
 
 if __name__ == "__main__":
