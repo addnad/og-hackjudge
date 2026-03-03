@@ -166,13 +166,6 @@ def clear_projects():
     result = get_col().delete_many({})
     return jsonify({"deleted": result.deleted_count})
 
-@app.route("/api/admin/clear", methods=["DELETE"])
-def clear_projects():
-    if request.headers.get("X-Admin-Key") != "og-hackjudge-clear-2024":
-        return jsonify({"error": "Unauthorized"}), 401
-    result = get_col().delete_many({})
-    return jsonify({"deleted": result.deleted_count})
-
 @app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
     all_evaluated = list(get_col().find({"status": "evaluated"}, {"_id": 0}))
