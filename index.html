@@ -259,9 +259,14 @@ function lp(){
   d.classList.add('hidden');l.classList.remove('hidden');
   l.innerHTML='<div class="ld"><div class="spin"></div><div style="font-size:14px;color:var(--t2)">Loading...</div></div>';
   api('/api/projects').then(function(r){
-    P=r.projects;if(!P.length){l.innerHTML='<div class="card"><div class="emp"><div class="emp-i">&#x1F4ED;</div><h3>No projects yet</h3><p>Submit your first project!</p></div></div>';return}
-    var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F4CB;</span>Projects ('+P.length+')</div></div>';
-    P.forEach(function(p){h+='<div class="pc" onclick="sp(\''+p.id+'\')"><div><div class="pcn">'+esc(p.name)+'</div><div class="pcd">'+esc(p.description)+'</div></div><span class="bdg '+(p.status==='evaluated'?'bde':'bds')+'">'+p.status+'</span></div>'});
+    P=r.projects;
+    var visible=P.filter(function(p){return p.status==='evaluated'||(p.wallet&&W&&p.wallet.toLowerCase()===W.toLowerCase())});
+    if(!visible.length){l.innerHTML='<div class="card"><div class="emp"><div class="emp-i">&#x1F4ED;</div><h3>No projects yet</h3><p>Submit and evaluate your project to appear here!</p></div></div>';return}
+    var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F4CB;</span>Projects ('+visible.length+')</div></div>';
+    visible.forEach(function(p){
+      var isPending=p.status==='pending';
+      h+='<div class="pc" onclick="sp(\''+p.id+'\')"><div><div class="pcn">'+esc(p.name)+(isPending?' <span style="font-size:10px;color:var(--t3)">(only visible to you)</span>':'')+'</div><div class="pcd">'+esc(p.description)+'</div></div><span class="bdg '+(p.status==='evaluated'?'bde':'bds')+'">'+p.status+'</span></div>';
+    });
     l.innerHTML=h+'</div>';
   }).catch(function(e){l.innerHTML='<div class="al aer">'+esc(e.message)+'</div>'});
 }
@@ -270,7 +275,9 @@ function sp(id){
   var l=document.getElementById('pl'),d=document.getElementById('pd');
   l.classList.add('hidden');d.classList.remove('hidden');
   var p=P.filter(function(x){return x.id===id})[0];if(!p)return;
-  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F50D;</span>'+esc(p.name)+'</div><div style="display:flex;gap:7px"><button class="btn bx bs" onclick="lp()">&#8592; Back</button><button class="btn bg bs" id="eb" onclick="ev(\''+p.id+'\')">&#9889; Evaluate with AI</button></div></div>';
+  var isOwner=p.wallet&&W&&p.wallet.toLowerCase()===W.toLowerCase();
+  var editBtn=isOwner&&p.status==='pending'?'<button class="btn bo bs" onclick="editp(\''+p.id+'\')" style="border-color:var(--info);color:var(--info)">&#9998; Edit</button>':'';
+  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#x1F50D;</span>'+esc(p.name)+'</div><div style="display:flex;gap:7px"><button class="btn bx bs" onclick="lp()">&#8592; Back</button>'+editBtn+'<button class="btn bg bs" id="eb" onclick="ev(\''+p.id+'\')">&#9889; Evaluate with AI</button></div></div>';
   h+='<p style="color:var(--t2);line-height:1.6;margin-bottom:18px;font-size:14px">'+esc(p.description)+'</p>';
   if(p.tech_stack)h+='<div class="cr"><span class="cl">Tech Stack</span><span class="cv">'+esc(p.tech_stack)+'</span></div>';
   if(p.og_features)h+='<div class="cr"><span class="cl">OG Features</span><span class="cv">'+esc(p.og_features)+'</span></div>';
@@ -278,6 +285,48 @@ function sp(id){
   if(p.repo_url)h+='<div class="cr"><span class="cl">Repo</span><a class="cv" href="'+esc(p.repo_url)+'" target="_blank">'+esc(p.repo_url)+'</a></div>';
   h+='<div id="er"></div></div>';
   d.innerHTML=h;
+}
+
+function editp(id){
+  var p=P.filter(function(x){return x.id===id})[0];if(!p)return;
+  var d=document.getElementById('pd');
+  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#9998;</span>Edit Project</div><button class="btn bx bs" onclick="sp(''+p.id+'')">&#8592; Cancel</button></div>';
+  h+='<div class="fg"><label class="fl">Project Name</label><input class="fi" id="e-name" value="'+esc(p.name)+'"></div>';
+  h+='<div class="fg"><label class="fl">Description</label><textarea class="ft" id="e-desc">'+esc(p.description)+'</textarea></div>';
+  h+='<div class="fr"><div class="fg"><label class="fl">Tech Stack</label><input class="fi" id="e-tech" value="'+esc(p.tech_stack||'')+'"></div><div class="fg"><label class="fl">OG Features</label><input class="fi" id="e-og" value="'+esc(p.og_features||'')+'"></div></div>';
+  h+='<div class="fr"><div class="fg"><label class="fl">Demo URL</label><input class="fi" id="e-demo" value="'+esc(p.demo_url||'')+'"></div><div class="fg"><label class="fl">Repo URL</label><input class="fi" id="e-repo" value="'+esc(p.repo_url||'')+'"></div></div>';
+  h+='<div class="fg"><label class="fl">Notes</label><textarea class="ft" id="e-notes" style="min-height:64px">'+esc(p.notes||'')+'</textarea></div>';
+  h+='<button class="btn bg" onclick="saveedit(''+p.id+'')">Save Changes</button>';
+  h+='<div id="em" class="hidden mt4"></div></div>';
+  d.innerHTML=h;
+}
+
+function saveedit(id){
+  var em=document.getElementById('em');
+  em.className='hidden';
+  api('/api/projects/'+id,{method:'PUT',body:JSON.stringify({
+    wallet:W||'',
+    name:document.getElementById('e-name').value,
+    description:document.getElementById('e-desc').value,
+    tech_stack:document.getElementById('e-tech').value,
+    og_features:document.getElementById('e-og').value,
+    demo_url:document.getElementById('e-demo').value,
+    repo_url:document.getElementById('e-repo').value,
+    notes:document.getElementById('e-notes').value
+  })}).then(function(){
+    var idx=P.findIndex(function(x){return x.id===id});
+    if(idx>-1){
+      P[idx].name=document.getElementById('e-name').value;
+      P[idx].description=document.getElementById('e-desc').value;
+      P[idx].tech_stack=document.getElementById('e-tech').value;
+      P[idx].og_features=document.getElementById('e-og').value;
+      P[idx].demo_url=document.getElementById('e-demo').value;
+      P[idx].repo_url=document.getElementById('e-repo').value;
+      P[idx].notes=document.getElementById('e-notes').value;
+    }
+    em.className='al aok mt4';em.innerHTML='&#10003; Saved!';
+    setTimeout(function(){sp(id)},1000);
+  }).catch(function(e){em.className='al aer mt4';em.innerHTML='&#10005; '+esc(e.message)});
 }
 
 async function ev(id){

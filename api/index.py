@@ -140,6 +140,25 @@ def evaluate(pid):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route("/api/projects/<pid>", methods=["PUT"])
+def edit_project(pid):
+    try:
+        data = request.json or {}
+        p = get_col().find_one({"id": pid}, {"_id": 0})
+        if not p:
+            return jsonify({"error": "Project not found"}), 404
+        if p.get("status") == "evaluated":
+            return jsonify({"error": "Cannot edit an evaluated project."}), 400
+        submitter_wallet = p.get("wallet", "").lower()
+        editor_wallet = data.get("wallet", "").lower()
+        if submitter_wallet and editor_wallet and submitter_wallet != editor_wallet:
+            return jsonify({"error": "Only the project owner can edit this project."}), 403
+        update = {k: data[k] for k in ["name","description","tech_stack","og_features","demo_url","repo_url","notes"] if k in data}
+        get_col().update_one({"id": pid}, {"$set": update})
+        return jsonify({"success": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
     all_evaluated = list(get_col().find({"status": "evaluated"}, {"_id": 0}))
