@@ -6,8 +6,6 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
-import opengradient as og
-
 load_dotenv()
 
 app = Flask(__name__)
@@ -28,6 +26,7 @@ _og_client = None
 def get_og_client():
     global _og_client
     if _og_client is None:
+        import opengradient as og
         _og_client = og.Client(private_key=os.getenv("OG_PRIVATE_KEY"))
     return _og_client
 
@@ -84,6 +83,7 @@ def fallback_score(p):
 def score_project(p):
     messages = [{"role": "user", "content": build_prompt(p)}]
     try:
+        import opengradient as og
         client = get_og_client()
         result = client.llm.chat(
             model=og.TEE_LLM.CLAUDE_HAIKU_4_5,
