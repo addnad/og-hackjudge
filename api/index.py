@@ -6,22 +6,23 @@ from dotenv import load_dotenv
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from pymongo import MongoClient
-import opengradient as og
-
 load_dotenv()
 
 app = Flask(__name__)
 CORS(app)
 
-MONGO_URI = os.getenv("MONGO_URI")
-mongo_client = MongoClient(MONGO_URI)
-db = mongo_client["og_hackjudge"]
-projects_col = db["projects"]
+_mongo_client = None
+def get_col():
+    global _mongo_client
+    if _mongo_client is None:
+        _mongo_client = MongoClient(os.getenv("MONGO_URI"))
+    return _mongo_client["og_hackjudge"]["projects"]
 
 _og_client = None
 def get_og_client():
     global _og_client
     if _og_client is None:
+        import opengradient as og
         _og_client = og.Client(private_key=os.getenv("OG_PRIVATE_KEY"))
     return _og_client
 
@@ -105,41 +106,43 @@ def index():
 
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
-    projects = list(projects_col.find({}, {"_id": 0}).sort("created_at", -1))
+    projects = list(get_col().find({}, {"_id": 0}).sort("created_at", -1))
     return jsonify({"projects": projects})
 
 @app.route("/api/projects", methods=["POST"])
 def submit_project():
     data = request.json
     project = {"id": str(uuid.uuid4())[:8], "name": data.get("name", ""), "description": data.get("description", ""), "tech_stack": data.get("tech_stack", ""), "og_features": data.get("og_features", ""), "demo_url": data.get("demo_url", ""), "repo_url": data.get("repo_url", ""), "notes": data.get("notes", ""), "wallet": data.get("wallet", ""), "status": "pending", "created_at": time.time()}
-    projects_col.insert_one(project)
+    get_col().insert_one(project)
     project.pop("_id", None)
     return jsonify({"project": project})
 
 @app.route("/api/evaluate/<pid>", methods=["POST"])
 def evaluate(pid):
-    p = projects_col.find_one({"id": pid}, {"_id": 0})
+    p = get_col().find_one({"id": pid}, {"_id": 0})
     if not p:
         return jsonify({"error": "Project not found"}), 404
     try:
         data_check = request.json or {}
         if p.get("status") == "evaluated":
             return jsonify({"error": "This project has already been evaluated."}), 400
-        # Anyone can evaluate
+        submitter_wallet = p.get("wallet", "").lower()
+        evaluator_wallet = data_check.get("wallet", "").lower()
+        if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
+            return jsonify({"error": "Only the project owner can evaluate this project."}), 403
         start = time.time()
         evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
-        projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "status": "evaluated"}})
         tee_sig = evaluation.pop("_tee_signature", "") or ""
         tee_ts = evaluation.pop("_tee_timestamp", "") or ""
-        projects_col.update_one({"id": pid}, {"$set": {"evaluation": evaluation, "tee_signature": tee_sig, "tee_timestamp": tee_ts, "status": "evaluated"}})
+        get_col().update_one({"id": pid}, {"$set": {"evaluation": evaluation, "tee_signature": tee_sig, "tee_timestamp": tee_ts, "status": "evaluated"}})
         return jsonify({"project_name": p["name"], "evaluation": evaluation, "metadata": {"model": "Claude Haiku 4.5 (TEE-verified via x402)", "inference_mode": "TEE", "inference_time_seconds": elapsed, "tee_signature": tee_sig, "tee_timestamp": tee_ts, "payment_hash": "x402-opg"}})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 @app.route("/api/leaderboard", methods=["GET"])
 def leaderboard():
-    all_evaluated = list(projects_col.find({"status": "evaluated"}, {"_id": 0}))
+    all_evaluated = list(get_col().find({"status": "evaluated"}, {"_id": 0}))
     valid = [p for p in all_evaluated if p.get("evaluation") and isinstance(p["evaluation"].get("weighted_total"), (int, float))]
     valid = sorted(valid, key=lambda x: x["evaluation"]["weighted_total"], reverse=True)
     lb = [{"rank": i+1, "project_name": p["name"], "description": p.get("description",""), "tech_stack": p.get("tech_stack",""), "og_features": p.get("og_features",""), "demo_url": p.get("demo_url",""), "repo_url": p.get("repo_url",""), "wallet": p.get("wallet",""), "score": p["evaluation"]["weighted_total"], "tier": p["evaluation"]["tier"], "scores": p["evaluation"].get("scores",{}), "summary": p["evaluation"].get("summary",""), "strengths": p["evaluation"].get("strengths",[]), "improvements": p["evaluation"].get("improvements",[])} for i, p in enumerate(valid)]

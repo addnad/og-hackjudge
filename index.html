@@ -156,7 +156,7 @@ a{color:var(--gold);text-decoration:none}a:hover{text-decoration:underline}
   <button class="tab on" onclick="go('submit')">Submit</button>
   <button class="tab" onclick="go('projects')">Projects</button>
   <button class="tab" onclick="go('board')">Leaderboard</button>
-  <button class="tab" onclick="go('faucet')">Faucet</button>
+  
 </nav>
 
 <section id="v-submit"><div class="card">
@@ -233,8 +233,8 @@ var BASE='',P=[];
 function esc(s){if(!s)return'';var d=document.createElement('div');d.textContent=s;return d.innerHTML}
 
 function go(t){
-  ['submit','projects','board','faucet'].forEach(function(k){document.getElementById('v-'+k).classList.toggle('hidden',k!==t)});
-  var tabs=document.querySelectorAll('.tab'),m={submit:0,projects:1,board:2,faucet:3};
+  ['submit','projects','board'].forEach(function(k){document.getElementById('v-'+k).classList.toggle('hidden',k!==t)});
+  var tabs=document.querySelectorAll('.tab'),m={submit:0,projects:1,board:2};
   tabs.forEach(function(b,i){b.classList.toggle('on',i===m[t])});
   if(t==='projects')lp();if(t==='board')llb();
 }
