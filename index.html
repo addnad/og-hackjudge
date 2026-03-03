@@ -290,13 +290,13 @@ function sp(id){
 function editp(id){
   var p=P.filter(function(x){return x.id===id})[0];if(!p)return;
   var d=document.getElementById('pd');
-  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#9998;</span>Edit Project</div><button class="btn bx bs" onclick="sp(''+p.id+'')">&#8592; Cancel</button></div>';
+  var h='<div class="card"><div class="ch"><div class="ct"><span class="ico">&#9998;</span>Edit Project</div><button class="btn bx bs" onclick="sp(\''+p.id+'\')">&#8592; Cancel</button></div>';
   h+='<div class="fg"><label class="fl">Project Name</label><input class="fi" id="e-name" value="'+esc(p.name)+'"></div>';
   h+='<div class="fg"><label class="fl">Description</label><textarea class="ft" id="e-desc">'+esc(p.description)+'</textarea></div>';
   h+='<div class="fr"><div class="fg"><label class="fl">Tech Stack</label><input class="fi" id="e-tech" value="'+esc(p.tech_stack||'')+'"></div><div class="fg"><label class="fl">OG Features</label><input class="fi" id="e-og" value="'+esc(p.og_features||'')+'"></div></div>';
   h+='<div class="fr"><div class="fg"><label class="fl">Demo URL</label><input class="fi" id="e-demo" value="'+esc(p.demo_url||'')+'"></div><div class="fg"><label class="fl">Repo URL</label><input class="fi" id="e-repo" value="'+esc(p.repo_url||'')+'"></div></div>';
   h+='<div class="fg"><label class="fl">Notes</label><textarea class="ft" id="e-notes" style="min-height:64px">'+esc(p.notes||'')+'</textarea></div>';
-  h+='<button class="btn bg" onclick="saveedit(''+p.id+'')">Save Changes</button>';
+  h+='<button class="btn bg" onclick="saveedit(\''+p.id+'\')">Save Changes</button>';
   h+='<div id="em" class="hidden mt4"></div></div>';
   d.innerHTML=h;
 }
