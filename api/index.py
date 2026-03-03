@@ -79,6 +79,7 @@ def fallback_score(p):
 def score_project(p):
     messages = [{"role": "user", "content": build_prompt(p)}]
     try:
+        import opengradient as og
         client = get_og_client()
         result = client.llm.chat(
             model=og.TEE_LLM.CLAUDE_HAIKU_4_5,
