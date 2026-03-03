@@ -103,13 +103,6 @@ def index():
     with open(os.path.join(base, "index.html"), "r") as f:
         return f.read(), 200, {"Content-Type": "text/html"}
 
-@app.route("/api/admin/clear", methods=["DELETE"])
-def clear_projects():
-    if request.headers.get("X-Admin-Key") != "og-hackjudge-clear-2024":
-        return jsonify({"error": "Unauthorized"}), 401
-    result = projects_col.delete_many({})
-    return jsonify({"deleted": result.deleted_count})
-
 @app.route("/api/projects", methods=["GET"])
 def get_projects():
     projects = list(projects_col.find({}, {"_id": 0}).sort("created_at", -1))
