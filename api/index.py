@@ -88,11 +88,8 @@ def score_project(p):
             x402_settlement_mode=og.x402SettlementMode.SETTLE_BATCH
         )
         evaluation = parse_llm_output(result.chat_output.get("content", "").strip())
-        _sig = getattr(result, "tee_signature", "") or ""
-        _ts = getattr(result, "tee_timestamp", "") or ""
-        print(f"TEE_SIG_DEBUG: sig={_sig[:20] if _sig else None} ts={_ts}")
-        evaluation["_tee_signature"] = _sig
-        evaluation["_tee_timestamp"] = _ts
+        evaluation["_tee_signature"] = getattr(result, "tee_signature", "") or ""
+        evaluation["_tee_timestamp"] = getattr(result, "tee_timestamp", "") or ""
         return evaluation
     except Exception as e:
         print(f"LLM scoring failed: {e}, falling back to algorithmic")
