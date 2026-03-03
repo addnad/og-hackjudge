@@ -124,10 +124,7 @@ def evaluate(pid):
         data_check = request.json or {}
         if p.get("status") == "evaluated":
             return jsonify({"error": "This project has already been evaluated."}), 400
-        submitter_wallet = p.get("wallet", "").lower()
-        evaluator_wallet = data_check.get("wallet", "").lower()
-        if submitter_wallet and evaluator_wallet and submitter_wallet != evaluator_wallet:
-            return jsonify({"error": "Only the project owner can evaluate this project."}), 403
+        # Anyone can evaluate
         start = time.time()
         evaluation = score_project(p)
         elapsed = round(time.time() - start, 2)
