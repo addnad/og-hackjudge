@@ -92,7 +92,9 @@ def score_project(p):
         return evaluation
     except Exception as e:
         print(f"LLM scoring failed: {e}, falling back to algorithmic")
-        return fallback_score(p)
+        fb = fallback_score(p)
+        fb["_llm_error"] = str(e)
+        return fb
 
 @app.route("/")
 def landing():
